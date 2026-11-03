@@ -4,92 +4,95 @@
 - Step 0.1, the number of pizza names: 18
 - Step 0.3, status code of the request without a token: 401
 - Step 0.4, the name of your pizza: The Dead Hawaii
-- Step 0.12, results of the three runs without a session (optional): Run 1: FAILED (assert 401 == 200), Run 2: PASSED (status code 200), Run 3: FAILED (assert 401 == 200)
+- Step 0.12, results of the three runs without a session (optional): 
+  - ครั้งที่ 1: FAILED (assert 401 == 200)
+  - ครั้งที่ 2: PASSED (status code 200)
+  - ครั้งที่ 3: FAILED (assert 401 == 200)
 - Step 0.16, blocks of "how many of the three tools are excluded":
-  - 0 tools excluded: `[]`
-  - 1 tool excluded: `["Knife"]` or `["Scissors"]`
-  - 2 tools excluded: `["Knife", "Scissors"]`
-  - 3 tools excluded: `["Knife", "Pizza cutter", "Scissors"]`
+  - ไม่ยกเว้นอุปกรณ์เลย (0 tools): `[]`
+  - ยกเว้น 1 อุปกรณ์ (1 tool): `["Knife"]` หรือ `["Scissors"]`
+  - ยกเว้น 2 อุปกรณ์ (2 tools): `["Knife", "Scissors"]`
+  - ยกเว้นครบทั้ง 3 อุปกรณ์ (3 tools): `["Knife", "Pizza cutter", "Scissors"]`
 
 ## Defect report
-- Title: Server returns 500 Internal Server Error when all three tools are excluded
-- Request: `POST https://quickpizza.grafana.com/api/pizza` with header `Authorization: token <valid-token>` and body `{"excludedTools": ["Knife", "Pizza cutter", "Scissors"]}`
-- Expected result: Status code 400 Bad Request with a descriptive JSON error message explaining that no pizza can satisfy the request (e.g. `{"error": "no pizza can satisfy the request"}`).
-- Actual result: Status code 500 Internal Server Error with an empty body (`Content-Length: 0`).
-- Severity: Medium (Causes unhandled server-side failure instead of proper input validation and error feedback when an impossible combination of constraints is provided).
+- Title: เซิร์ฟเวอร์ส่งกลับค่า 500 Internal Server Error เมื่อระบุยกเว้นอุปกรณ์ตัดพิซซ่าครบทั้ง 3 ชนิด
+- Request: `POST https://quickpizza.grafana.com/api/pizza` พร้อม Header `Authorization: token <valid-token>` และ Body `{"excludedTools": ["Knife", "Pizza cutter", "Scissors"]}`
+- Expected result: ได้รับ Status Code 400 Bad Request พร้อมข้อความแจ้งเตือน Error ในรูปแบบ JSON ที่ระบุชัดเจนว่าไม่มีพิซซ่าใดตรงตามเงื่อนไข (เช่น `{"error": "no pizza can satisfy the request"}`)
+- Actual result: ได้รับ Status Code 500 Internal Server Error พร้อม Body ที่ว่างเปล่า (`Content-Length: 0`)
+- Severity: ปานกลาง (Medium) - ส่งผลให้เกิดข้อผิดพลาดรุนแรงระดับเซิร์ฟเวอร์ที่ไม่ได้ถูกจัดการ (Unhandled Server-Side Failure) แทนที่จะเป็นการตรวจสอบความถูกต้องของ Input (Input Validation) และแจ้งข้อความตอบกลับที่เหมาะสมเมื่อได้รับเงื่อนไขที่เป็นไปไม่ได้
 
 ## Part A
 - Step A4, status codes when the other user reads, changes and deletes:
-  - Read: 404 Not Found (response: `{"error":"not found"}`)
-  - Change: 400 Bad Request (response: `{"error":"rating ID <id> not found"}`)
-  - Delete: 400 Bad Request (response: `{"error":"rating ID <id> not found"}`)
+  - อ่านข้อมูล (Read): 404 Not Found (ข้อความตอบกลับ: `{"error":"not found"}`)
+  - แก้ไขข้อมูล (Change): 400 Bad Request (ข้อความตอบกลับ: `{"error":"rating ID <id> not found"}`)
+  - ลบข้อมูล (Delete): 400 Bad Request (ข้อความตอบกลับ: `{"error":"rating ID <id> not found"}`)
 
 ## Part B
-1. **Two kinds of failure an API test can find that a unit test with stubs cannot:**
-   - Real network, environment, and protocol integration issues: Examples include HTTP status code discrepancies, payload serialization/deserialization mismatches, and load balancer cookie/session handling (such as `AWSALB`).
-   - Server-side runtime errors and unhandled exceptions: For example, an unhandled exception resulting in HTTP 500 Internal Server Error on the live backend when specific constraint combinations (such as excluding all cutting tools) are passed.
-   
-   **One reason to write unit tests with stubs as well:**
-   - Unit tests execute orders of magnitude faster (in milliseconds without network latency), are fully deterministic and isolated from external dependencies (avoiding network flakiness, rate limiting, and server downtime), and can easily simulate hard-to-reach edge cases (such as connection timeouts or unexpected server crashes).
+1. **ความผิดพลาด 2 ประเภทที่ API test ตรวจพบได้ แต่ Unit test ที่ใช้ Stub ตรวจไม่พบ:**
+   - **ข้อผิดพลาดจากการเชื่อมต่อเครือข่าย สภาพแวดล้อมจริง และโปรโตคอล (Network, Environment & Protocol Integration):** เช่น ค่า HTTP status code ไม่ตรงตามข้อกำหนด, รูปแบบโครงสร้างข้อมูล (Payload) ไม่ตรงกันตอนแปลงข้อมูล (Serialization/Deserialization mismatch) และปัญหาการจัดการ Sticky Session/Cookie บน Load Balancer จริง (เช่น `AWSALB`)
+   - **ข้อผิดพลาดของระบบรันไทม์ฝั่งเซิร์ฟเวอร์ที่ไม่ได้รับการจัดการ (Server-Side Unhandled Exceptions):** เช่น การเกิด Unhandled Exception ที่ทำให้เซิร์ฟเวอร์ตอบกลับเป็น 500 Internal Server Error บนระบบ Backend จริงเมื่อได้รับชุดข้อมูลเงื่อนไขเฉพาะ (เช่น การยกเว้นอุปกรณ์ตัดทั้งหมด)
 
-2. **Why every test creates its own user with a new name rather than using the public token:**
-   - QuickPizza is a shared environment accessed concurrently by multiple users and automated test runs. If tests share the same user account or public token, concurrent tests will read, modify, or delete each other's data (test pollution and race conditions). Creating a fresh, uniquely named user per test ensures test isolation and reproducibility.
-   
-   **Applying this to Project 2:**
-   - In Project 2 (testing the shared shop or hotel API), each test or test run should create its own uniquely partitioned resources (e.g., using random UUIDs or distinct group prefixes for customer names, cart sessions, or room bookings) and clean them up after execution so tests never interfere with other groups' data.
+   **เหตุผลที่ยังคงต้องเขียน Unit test ร่วมกับ Stub:**
+   - Unit test ทำงานได้เร็วกว่ามาก (ใช้เวลาหลักมิลลิวินาทีเพราะไม่ต้องผ่านเครือข่าย) มีผลลัพธ์ที่แน่นอน (Deterministic) แยกเป็นอิสระจากปัจจัยภายนอก (ป้องกันปัญหา Network Flakiness, Rate Limiting หรือเซิร์ฟเวอร์ล่ม) และสามารถจำลองกรณีขอบเขต (Edge cases) ที่เกิดขึ้นได้ยากในระบบจริงได้ง่าย เช่น Connection Timeout หรือ Server Crash
 
-3. **Why tests send every request through one session:**
-   - QuickPizza operates on multiple backend servers behind a load balancer. When a user is created on one server instance, that user only exists on that specific instance. The load balancer issues sticky session cookies (`AWSALB` and `AWSALBCORS`). By using a single `requests.Session` across requests, the client automatically stores and resends these cookies with every call, ensuring that all related requests route to the identical backend server.
-   
-   **Step 0.12 observations:**
-   - Without a session, each request is sent standalone without cookies. In our 3 runs:
-     - Run 1 failed with 401 Unauthorized during login (`assert 401 == 200`) because the login request hit a different server that did not know the user.
-     - Run 2 passed (200 OK) because the load balancer randomly hit the same server instance.
-     - Run 3 failed with 401 Unauthorized (`assert 401 == 200`) because it again reached a different server instance. This demonstrated that tests without session affinity are flaky.
+2. **เหตุผลที่ทุกเทสต์ต้องสร้างผู้ใช้ใหม่ขึ้นมาเอง แทนที่จะใช้ Public Token:**
+   - QuickPizza เป็นระบบทดสอบที่ใช้ร่วมกันโดยผู้ใช้งานและชุดทดสอบอัตโนมัติหลายตัว หากเทสต์ต่าง ๆ ใช้บัญชีผู้ใช้หรือ Public Token ร่วมกัน เทสต์ที่ทำงานพร้อมกันจะเข้าไปอ่าน แก้ไข หรือลบข้อมูลของกันและกัน เกิดปัญหา Data Pollution และ Race Condition การสร้างผู้ใช้ใหม่ที่สุ่มชื่อไม่ซ้ำกันในทุกเทสต์ จะช่วยให้ชุดทดสอบแยกเป็นอิสระต่อกัน (Test Isolation) และให้ผลลัพธ์ที่แม่นยำเสมอ
 
-4. **Excluded tools block that revealed the defect in Step 0.16:**
-   - The block with 3 tools excluded: `["Knife", "Pizza cutter", "Scissors"]`.
-   
-   **Why 500 with empty body is worse than 400 with a message:**
-   - A 500 Internal Server Error indicates an unexpected, unhandled crash on the server. The empty body provides no explanation to client applications, leaving them unable to determine whether the server is completely down or if the request was simply unsatisfied. In contrast, a 400 Bad Request with a clear JSON error message informs the client that the request broke domain rules, allowing the client application to display a helpful message to the user.
-   
-   **Why the test stays as `xfail` instead of being deleted:**
-   - Keeping the test as `@pytest.mark.xfail(strict=True)` documents the known defect and keeps it tracked without breaking continuous integration runs. If deleted, regression tracking is lost. With `strict=True`, pytest will immediately fail the suite when QuickPizza fixes the defect (reporting an unexpected pass, `XPASS`), prompting developers to update the test expectation and remove the `xfail` marker.
+   **การประยุกต์ใช้ใน Project 2:**
+   - สำหรับ Project 2 (ระบบร้านค้าหรือโรงแรม) แต่ละเทสต์หรือการรันแต่ละครั้งควรสร้างทรัพยากรที่มีการระบุตัวตนเฉพาะแยกจากกัน (เช่น ใช้การสุ่ม UUID หรือใส่ Prefix รหัสกลุ่มในชื่อลูกค้า, ตะกร้าสินค้า, หรือการจองห้องพัก) และทำการล้างข้อมูลออกหลังทดสอบเสร็จ เพื่อไม่ให้ส่งผลกระทบต่อข้อมูลของกลุ่มอื่น
 
-5. **Test counts for Base Choice Coverage (BCC) vs. All Combinations (AC) for Step A1:**
-   - Characteristics and blocks:
-     - C1 (Value of stars): 3 blocks (`below 1`, `1 to 5` [base], `above 5`)
-     - C2 (Type of stars): 4 blocks (`whole number` [base], `decimal`, `text`, `missing`)
-     - C3 (Pizza): 2 blocks (`exists` [base], `does not exist`)
-     - C4 (Token): 3 blocks (`user's own` [base], `none`, `wrong length`)
-   
-   - **Base Choice Coverage:**
-     - 1 base test (all characteristics at base block)
-     - C1 non-base: 3 - 1 = 2 tests
-     - C2 non-base: 4 - 1 = 3 tests
-     - C3 non-base: 2 - 1 = 1 test
-     - C4 non-base: 3 - 1 = 2 tests
-     - Total = 1 + 2 + 3 + 1 + 2 = **9 tests**.
-   
-   - **All Combinations Coverage:**
-     - Total = 3 × 4 × 2 × 3 = **72 tests**.
+3. **เหตุผลที่ชุดทดสอบต้องส่งทุก Request ผ่าน Session เดียวกัน:**
+   - QuickPizza ทำงานอยู่บนเซิร์ฟเวอร์ Backend หลายตัวหลัง Load Balancer เมื่อผู้ใช้ถูกสร้างขึ้นบนเซิร์ฟเวอร์เครื่องใดเครื่องหนึ่ง ข้อมูลผู้ใช้นั้นจะถูกเก็บอยู่เฉพาะในเครื่องนั้น Load Balancer จะส่ง Cookie สำหรับคุม Session (`AWSALB` และ `AWSALBCORS`) มาให้ การใช้ `requests.Session` จะช่วยให้ระบบบันทึกและส่ง Cookie นี้กลับไปในทุก Request โดยอัตโนมัติ ทำให้ทุก Request วิ่งไปยังเซิร์ฟเวอร์ Backend เครื่องเดิมเสมอ
 
-6. **Status codes from Step A4 and defect analysis:**
-   - Actual status codes obtained:
-     - Read: `404 Not Found`
-     - Change (PUT): `400 Bad Request`
-     - Delete (DELETE): `400 Bad Request`
-   - Expected status codes:
-     - Standard RESTful authorization expects `403 Forbidden` when an authenticated user attempts to access or modify a resource owned by another user.
-     - Alternatively, if the API chooses to hide resource existence to avoid enumeration attacks, it should consistently return `404 Not Found` across all three operations (GET, PUT, DELETE).
-   - Is it a defect?
-     - Yes. Returning `400 Bad Request` for PUT and DELETE is incorrect HTTP semantics because the request syntax and body format are valid. Furthermore, the response bodies explicitly claim `"rating ID <id> not found"`, directly contradicting the `400 Bad Request` status code by describing a missing resource condition (`404`) under a syntax error code (`400`).
+   **ข้อสังเกตจาก Step 0.12:**
+   - การส่ง Request โดยไม่ใช้ Session จะไม่มีการแนบ Cookie ไปด้วย จากการรัน 3 ครั้งพบว่า:
+     - ครั้งที่ 1: ล้มเหลว (Failed) ได้รับรหัส 401 Unauthorized ในขั้นตอน Login (`assert 401 == 200`) เนื่องจาก Login Request ถูกส่งไปยังเซิร์ฟเวอร์คนละเครื่องที่ไม่รู้จักผู้ใช้ใหม่นี้
+     - ครั้งที่ 2: ผ่าน (Passed) ได้รับรหัส 200 OK เนื่องจาก Load Balancer สุ่มส่ง Request ไปยังเซิร์ฟเวอร์เครื่องเดิมโดยบังเอิญ
+     - ครั้งที่ 3: ล้มเหลว (Failed) ได้รับรหัส 401 Unauthorized (`assert 401 == 200`) เนื่องจากถูกส่งไปยังเซิร์ฟเวอร์เครื่องอื่นอีกครั้ง ซึ่งแสดงให้เห็นว่าเทสต์ที่ไม่ควบคุม Session จะกลายเป็น Flaky Test (เทสต์ที่ผลลัพธ์ไม่แน่นอน)
 
-7. **Made-up token test results and implications:**
-   - What comes back: The API returns `200 OK` with a JSON list containing public ratings: `{"ratings":[{"id":1,"stars":5,"pizza_id":1}, ...]}`.
-   - Is this a defect: Yes, this is an authentication defect (Broken Authentication / Improper Token Validation).
-   - Potential impact: The API fails to validate whether the token belongs to an active, valid registered session, accepting any arbitrary 16-character string. On a real system, an attacker could forge tokens to bypass authentication, harvest user ratings, or access endpoints without ever registering or authenticating.
+4. **Block ของ Excluded Tools ที่ตรวจพบข้อผิดพลาดใน Step 0.16:**
+   - กลุ่มที่ยกเว้นอุปกรณ์ทั้ง 3 ชนิด: `["Knife", "Pizza cutter", "Scissors"]`
 
-8. **API test vs. Web page test comparison:**
-   - **Better checked by an API test:** Accurate HTTP response codes, headers (content types, caching headers, session cookies), exact JSON payload types, boundary value validation directly against backend logic, and fast regression test execution.
-   - **Only checkable by a web page test:** User interface visual presentation, CSS layouts across responsive breakpoints, client-side rendering behaviors, accessibility, animation smoothness, and end-user visual feedback.
+   **ทำไมการตอบกลับเป็น 500 พร้อม Body ว่างเปล่า ถึงแย่กว่า 400 พร้อมข้อความแจ้งเตือน:**
+   - รหัส 500 Internal Server Error หมายถึงเกิดการพังของระบบฝั่งเซิร์ฟเวอร์ที่ไม่ได้รับการจัดการ และการส่ง Body ว่างเปล่าทำให้แอปพลิเคชันฝั่ง Client ไม่สามารถทราบสาเหตุได้เลยว่าเซิร์ฟเวอร์ล่มทั้งหมด หรือเป็นเพียงแค่ขอข้อมูลที่ไม่รองรับ ในทางกลับกัน การตอบกลับด้วย 400 Bad Request พร้อมข้อความ JSON ที่ชัดเจน จะช่วยแจ้งให้ Client ทราบว่า Request ดังกล่าวผิดกฎของระบบ ทำให้แอปพลิเคชันฝั่ง Client สามารถนำข้อความไปแสดงแจ้งเตือนผู้ใช้งานได้อย่างถูกต้อง
+
+   **ทำไมต้องคงเทสต์ไว้เป็น `xfail` แทนที่จะลบทิ้ง:**
+   - การใส่ `@pytest.mark.xfail(strict=True)` ช่วยบันทึกและติดตามข้อผิดพลาด (Defect) ที่รับรู้แล้วไว้ในระบบโดยไม่ทำให้กระบวนการรัน Integration Test รวมล้มเหลว หากลบเทสต์ทิ้งไป จะทำให้ขาดการติดตามข้อผิดพลาดนี้ และการตั้งค่า `strict=True` จะทำให้ pytest แจ้งล้มเหลวทันทีหากในอนาคตทีมพัฒนา QuickPizza แก้ไขข้อผิดพลาดนี้แล้ว (ส่งผลให้เกิด Unexpected Pass หรือ `XPASS`) ซึ่งจะเป็นสัญญาณเตือนให้ผู้ทดสอบปรับเปลี่ยนคาดหวังของเทสต์และเอาเครื่องหมาย `xfail` ออก
+
+5. **จำนวนเทสต์สำหรับ Base Choice Coverage (BCC) เทียบกับ All Combinations (AC) สำหรับ Step A1:**
+   - คุณลักษณะ (Characteristics) และกลุ่มข้อมูล (Blocks):
+     - C1 (Value of stars): 3 blocks (`น้อยกว่า 1`, `1 ถึง 5` [base], `มากกว่า 5`)
+     - C2 (Type of stars): 4 blocks (`จำนวนเต็ม` [base], `ทศนิยม`, `ข้อความ`, `ไม่มีฟิลด์นี้`)
+     - C3 (Pizza): 2 blocks (`มีอยู่จริง` [base], `ไม่มีอยู่จริง`)
+     - C4 (Token): 3 blocks (`ของตนเอง` [base], `ไม่ส่ง Header`, `ความยาวไม่ถูกต้อง`)
+
+   - **Base Choice Coverage (BCC):**
+     - เทสต์กรณีฐาน (Base Test) 1 เทสต์ (ใช้กลุ่มที่เป็นค่าหลักทั้งหมด)
+     - C1 กลุ่มที่ไม่ใช่ Base: 3 - 1 = 2 เทสต์
+     - C2 กลุ่มที่ไม่ใช่ Base: 4 - 1 = 3 เทสต์
+     - C3 กลุ่มที่ไม่ใช่ Base: 2 - 1 = 1 เทสต์
+     - C4 กลุ่มที่ไม่ใช่ Base: 3 - 1 = 2 เทสต์
+     - **รวมทั้งหมด = 1 + 2 + 3 + 1 + 2 = 9 เทสต์**
+
+   - **All Combinations Coverage (AC):**
+     - **รวมทั้งหมด = 3 × 4 × 2 × 3 = 72 เทสต์**
+
+6. **Status codes จาก Step A4 และการวิเคราะห์ข้อผิดพลาด:**
+   - Status Code ที่ได้รับจริง:
+     - อ่านข้อมูล (GET): `404 Not Found`
+     - แก้ไขข้อมูล (PUT): `400 Bad Request`
+     - ลบข้อมูล (DELETE): `400 Bad Request`
+   - Status Code ที่ควรจะเป็นตามมาตรฐาน:
+     - ตามมาตรฐานสถาปัตยกรรม RESTful การที่ผู้ใช้ที่ยืนยันตัวตนแล้วพยายามเข้าถึงหรือแก้ไขข้อมูลของผู้ใช้อื่น ควรได้รับรหัส `403 Forbidden`
+     - หรือหาก API ต้องการปิดบังการมีอยู่ของข้อมูลเพื่อป้องกันการสุ่มหาไอดี (Enumeration Attack) ก็ควรตอบกลับเป็น `404 Not Found` ให้เหมือนกันทั้ง 3 การทำงาน (GET, PUT, DELETE)
+   - ถือเป็นข้อผิดพลาด (Defect) หรือไม่:
+     - เป็นข้อผิดพลาด (Defect) เนื่องจาก การตอบกลับด้วย `400 Bad Request` สำหรับ PUT และ DELETE ไม่ถูกต้องตามหลัก HTTP Semantics (เพราะไวยากรณ์และ Body ของ Request ถูกต้อง) ยิ่งไปกว่านั้น Body ของข้อความตอบกลับยังระบุว่า `"rating ID <id> not found"` ซึ่งขัดแย้งกับ Status Code `400` อย่างชัดเจน เพราะข้อความอธิบายถึงการไม่พบข้อมูล (`404`) แต่กลับส่งรหัสที่ใช้สำหรับไวยากรณ์ผิดพลาด (`400`)
+
+7. **ผลการทดสอบ Made-up Token และผลกระทบ:**
+   - สิ่งที่ตอบกลับมา: API ส่งคืนรหัส `200 OK` พร้อมรายการเรตติ้งที่เป็นสาธารณะ: `{"ratings":[{"id":1,"stars":5,"pizza_id":1}, ...]}`
+   - ถือเป็นข้อผิดพลาดหรือไม่: เป็นข้อผิดพลาดร้ายแรงด้านระบบยืนยันตัวตน (Broken Authentication / Improper Token Validation)
+   - ผลกระทบที่อาจเกิดขึ้น: API ไม่ได้ตรวจสอบว่า Token ดังกล่าวเป็นของผู้ใช้ที่มีการล็อกอินจริงหรือไม่ แต่กลับยอมรับข้อความความยาว 16 อักขระใดๆ ก็ได้ ในระบบจริง ผู้ไม่หวังดีอาจปลอมแปลง Token เพื่อข้ามระบบยืนยันตัวตน เข้าถึงข้อมูล หรือดึงข้อมูลเรตติ้งของผู้ใช้ได้โดยไม่ต้องลงทะเบียนหรือผ่านการตรวจสอบสิทธิ์
+
+8. **เปรียบเทียบการทดสอบผ่าน API เทียบกับการทดสอบผ่าน Web page:**
+   - **สิ่งที่ทดสอบผ่าน API ได้ดีกว่า:** การตรวจสอบความถูกต้องของ HTTP Status Code, Headers (เช่น Content-Type, Cache Control, Session Cookie), ความถูกต้องของชนิดข้อมูลใน JSON Payload, การทดสอบเงื่อนไขขอบเขต (Boundary Value) ตรงไปยัง Logic ฝั่ง Backend และการรันชุดทดสอบซ้ำได้อย่างรวดเร็ว
+   - **สิ่งที่ทดสอบได้เฉพาะผ่าน Web page เท่านั้น:** การแสดงผลทางทัศนียภาพของ User Interface (UI), การจัดเลย์เอาต์ด้วย CSS บนหน้าจอขนาดต่าง ๆ (Responsive Breakpoints), พฤติกรรมการประมวลผลฝั่ง Client (Client-Side Rendering), ความสะดวกในการใช้งานของผู้พิการ (Accessibility), ความลื่นไหลของ Animation และการตอบสนองทางสายตากับผู้ใช้งานจริง
